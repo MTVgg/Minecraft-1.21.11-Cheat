@@ -1,0 +1,90 @@
+package me.sootysplash.box.mixin;
+
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.registry.tag.ItemTags;
+import net.minecraft.util.Hand;
+import me.sootysplash.box.Main;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.UUID;
+
+@Mixin(MinecraftClient.class)
+public abstract class MixinMinecraftClient {
+    @Shadow public ClientPlayerEntity player;
+    @Shadow public Entity targetedEntity;
+
+    @Unique private static UUID lastTargetUUID = null;
+    @Unique private static int hitsTakenConsecutively = 0;
+
+    @Inject(method = "doAttack", at = @At("HEAD"))
+    private void onManualAttack(CallbackInfoReturnable<Boolean> cir) {
+        if (this.targetedEntity instanceof LivingEntity) {
+            lastTargetUUID = this.targetedEntity.getUuid();
+            hitsTakenConsecutively = 0;
+        }
+    }
+
+    @Inject(method = "handleInputEvents", at = @At("RETURN"))
+    private void onInput(CallbackInfo info) {
+        if (Main.c && Main.a) {
+            if (player == null || targetedEntity == null) return;
+
+            if (lastTargetUUID != null) {
+                boolean targetFoundAndInRange = false;
+                for (Entity entity : MinecraftClient.getInstance().world.getEntities()) {
+                    if (entity.getUuid().equals(lastTargetUUID)) {
+                        if (player.distanceTo(entity) <= 50.0) {
+                            targetFoundAndInRange = true;
+                        }
+                        break;
+                    }
+                }
+                if (!targetFoundAndInRange) {
+                    lastTargetUUID = null;
+                }
+            }
+
+            if (lastTargetUUID != null && !targetedEntity.getUuid().equals(lastTargetUUID)) return;
+
+            if (player.getMainHandStack().isIn(ItemTags.SWORDS) || player.getMainHandStack().isIn(ItemTags.AXES)) {
+                if (!player.isBlocking() && !player.isUsingItem() && !(MinecraftClient.getInstance().currentScreen instanceof HandledScreen)) {
+                    if (targetedEntity instanceof LivingEntity livingTarget && livingTarget.getHealth() > 0.0F) {
+                        double cooldownProgress = player.getAttackCooldownProgress(0.5F);
+
+                        if (player.isOnGround()) {
+                            if (!player.isSprinting()) return;
+                            if (cooldownProgress < 0.85D + Math.random() * 0.1D) return;
+                            performBotAttack(livingTarget);
+                        } else {
+                            if (player.getVelocity().y > -0.08) return;
+                            if (player.isClimbing() || player.isTouchingWater() || player.hasVehicle()) return;
+                            if (cooldownProgress < 0.85D + Math.random() * 0.05D) return;
+                            performBotAttack(livingTarget);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Unique
+    private void performBotAttack(LivingEntity target) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.interactionManager != null) {
+            mc.interactionManager.attackEntity(player, target);
+            player.swingHand(Hand.MAIN_HAND);
+            lastTargetUUID = target.getUuid();
+            hitsTakenConsecutively = 0;
+        }
+    }
+}
