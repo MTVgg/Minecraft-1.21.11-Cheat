@@ -6,7 +6,7 @@ import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.registry.tag.ItemTags; // Wichtig für Schwerter/Äxte
+import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.util.Hand;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -21,20 +21,16 @@ public abstract class MixinMinecraftClient {
 
     @Inject(method = "handleInputEvents", at = @At("RETURN"))
     private void onInput(CallbackInfo info) {
-        // Grund-Checks: Mod an? Spieler da? Target ein lebendes Wesen?
-        if (!Main.c || !Main.a || player == null || !(targetedEntity instanceof LivingEntity target)) {
-            return;
-        }
+        // 1. Mod-Check
+        if (!Main.c || !Main.a || player == null) return;
 
-        // Check: Hält der Spieler Schwert oder Axt? (Über Tags gelöst)
-        boolean hasWeapon = player.getMainHandStack().isIn(ItemTags.SWORDS) || 
-                            player.getMainHandStack().isIn(ItemTags.AXES);
-        
-        if (!hasWeapon) {
-            return;
-        }
+        // 2. Target-Check (Nutzt Minecrafts internes Raytracing)
+        if (!(targetedEntity instanceof LivingEntity target)) return;
 
-        // Check: Ist der Spieler handlungsfähig?
+        // 3. Waffen-Check
+        if (!(player.getMainHandStack().isIn(ItemTags.SWORDS) || player.getMainHandStack().isIn(ItemTags.AXES))) return;
+
+        // 4. Status-Check (Kein Essen, kein Blocken, kein Inventar, beide leben noch)
         if (player.isBlocking() || player.isUsingItem() || 
             MinecraftClient.getInstance().currentScreen instanceof HandledScreen || 
             player.getHealth() <= 0.0f || target.getHealth() <= 0.0f) {
@@ -42,32 +38,30 @@ public abstract class MixinMinecraftClient {
         }
 
         double cooldown = player.getAttackCooldownProgress(0.5f);
+        MinecraftClient mc = MinecraftClient.getInstance();
 
+        // 5. Die Logik vom "sicheren" Client
         if (player.isOnGround()) {
-            // SPRINT-LOGIK (Am Boden)
+            // SPRINT-LOGIK
             if (!player.isSprinting()) return;
-
-            // Cooldown Check (0.85 + Random)
             if (cooldown < 0.85 + Math.random() * 0.1) return;
 
-            performBotAttack(target);
+            // INTERACTION MANAGER ATTACK
+            if (mc.interactionManager != null) {
+                mc.interactionManager.attackEntity(player, target);
+                player.swingHand(Hand.MAIN_HAND);
+            }
         } else {
-            // CRIT-LOGIK (In der Luft)
-            // Nur schlagen, wenn wir fallen (Velocity Y < -0.1)
+            // CRIT-LOGIK (Luft)
+            // Wir nutzen -0.1 für perfektes Falling-Timing
             if (player.getVelocity().y > -0.1) return;
-
-            // Cooldown Check (Etwas schneller in der Luft)
             if (cooldown < 0.85 + Math.random() * 0.05) return;
 
-            performBotAttack(target);
-        }
-    }
-
-    private void performBotAttack(LivingEntity target) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.interactionManager != null) {
-            mc.interactionManager.attackEntity(player, target);
-            player.swingHand(Hand.MAIN_HAND);
+            // INTERACTION MANAGER ATTACK
+            if (mc.interactionManager != null) {
+                mc.interactionManager.attackEntity(player, target);
+                player.swingHand(Hand.MAIN_HAND);
+            }
         }
     }
 }
