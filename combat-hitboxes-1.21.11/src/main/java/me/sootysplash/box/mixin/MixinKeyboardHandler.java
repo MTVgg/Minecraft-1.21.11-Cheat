@@ -18,18 +18,17 @@ public class MixinKeyboardHandler {
     public void onTick(CallbackInfo ci) {
         MinecraftClient mc = MinecraftClient.getInstance();
 
-        // Safety check: only work if player is in-game, not in a menu, and Master Switch is ON
+        // Check: Spieler im Spiel, kein Menü offen, Mod ist generell an
         if (mc.player != null && mc.currentScreen == null && Main.c) {
 
-            // Keycode 44 is the Comma / < key
-            boolean isPressed = InputUtil.isKeyPressed(mc.getWindow(), 44);
+            // Keycode 341 ist die LINKE STRG-Taste (Left Control)
+            boolean isPressed = InputUtil.isKeyPressed(mc.getWindow(), 341);
 
-            // Toggle logic: flips the boolean only once when you first press the key
             if (isPressed && !lastPressedTrigger) {
-                Main.a = !Main.a; // Toggles Triggerbot ON/OFF
+                Main.a = !Main.a; // Schaltet den Triggerbot an/aus
             }
             
-            lastPressedTrigger = isPressed; // Update state
+            lastPressedTrigger = isPressed; 
         }
     }
 }
