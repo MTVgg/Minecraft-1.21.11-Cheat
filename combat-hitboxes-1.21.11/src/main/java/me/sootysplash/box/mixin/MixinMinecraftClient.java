@@ -24,13 +24,12 @@ public abstract class MixinMinecraftClient {
     @Shadow public Entity targetedEntity;
 
     @Unique private static UUID lastTargetUUID = null;
-    @Unique private static int hitsTakenConsecutively = 0;
+    @Unique private static int tickDelay = 0; 
 
     @Inject(method = "doAttack", at = @At("HEAD"))
     private void onManualAttack(CallbackInfoReturnable<Boolean> cir) {
         if (this.targetedEntity instanceof LivingEntity) {
             lastTargetUUID = this.targetedEntity.getUuid();
-            hitsTakenConsecutively = 0;
         }
     }
 
@@ -43,7 +42,7 @@ public abstract class MixinMinecraftClient {
                 boolean targetFoundAndInRange = false;
                 for (Entity entity : MinecraftClient.getInstance().world.getEntities()) {
                     if (entity.getUuid().equals(lastTargetUUID)) {
-                        if (player.distanceTo(entity) <= 50.0) {
+                        if (player.distanceTo(entity) <= 50.0) { // Zurück auf dein Original 50.0
                             targetFoundAndInRange = true;
                         }
                         break;
@@ -61,15 +60,32 @@ public abstract class MixinMinecraftClient {
                     if (targetedEntity instanceof LivingEntity livingTarget && livingTarget.getHealth() > 0.0F) {
                         double cooldownProgress = player.getAttackCooldownProgress(0.5F);
 
+                        // DEIN ORIGINALER SPRINT-CHECK (unverändert)
                         if (player.isOnGround()) {
                             if (!player.isSprinting()) return;
-                            if (cooldownProgress < 0.85D + Math.random() * 0.1D) return;
-                            performBotAttack(livingTarget);
+                            
+                            // Random Cooldown & Tick Delay eingebaut
+                            if (cooldownProgress < 0.92D + Math.random() * 0.06D) return;
+                            
+                            if (tickDelay <= 0) {
+                                tickDelay = 1 + (int)(Math.random() * 2);
+                            } else {
+                                tickDelay--;
+                                if (tickDelay == 0) performBotAttack(livingTarget);
+                            }
                         } else {
                             if (player.getVelocity().y > -0.08) return;
                             if (player.isClimbing() || player.isTouchingWater() || player.hasVehicle()) return;
-                            if (cooldownProgress < 0.85D + Math.random() * 0.05D) return;
-                            performBotAttack(livingTarget);
+                            
+                            // Random Cooldown & Tick Delay eingebaut
+                            if (cooldownProgress < 0.92D + Math.random() * 0.05D) return;
+                            
+                            if (tickDelay <= 0) {
+                                tickDelay = 1 + (int)(Math.random() * 2);
+                            } else {
+                                tickDelay--;
+                                if (tickDelay == 0) performBotAttack(livingTarget);
+                            }
                         }
                     }
                 }
@@ -84,7 +100,6 @@ public abstract class MixinMinecraftClient {
             mc.interactionManager.attackEntity(player, target);
             player.swingHand(Hand.MAIN_HAND);
             lastTargetUUID = target.getUuid();
-            hitsTakenConsecutively = 0;
         }
     }
 }
