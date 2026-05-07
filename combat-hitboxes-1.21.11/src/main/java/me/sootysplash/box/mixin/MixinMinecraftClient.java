@@ -6,8 +6,7 @@ import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.item.AxeItem;
-import net.minecraft.item.SwordItem;
+import net.minecraft.registry.tag.ItemTags; // Wichtig für Schwerter/Äxte
 import net.minecraft.util.Hand;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -27,13 +26,15 @@ public abstract class MixinMinecraftClient {
             return;
         }
 
-        // Check: Hält der Spieler Schwert oder Axt?
-        if (!(player.getMainHandStack().getItem() instanceof SwordItem) && 
-            !(player.getMainHandStack().getItem() instanceof AxeItem)) {
+        // Check: Hält der Spieler Schwert oder Axt? (Über Tags gelöst)
+        boolean hasWeapon = player.getMainHandStack().isIn(ItemTags.SWORDS) || 
+                            player.getMainHandStack().isIn(ItemTags.AXES);
+        
+        if (!hasWeapon) {
             return;
         }
 
-        // Check: Ist der Spieler handlungsfähig? (Kein Item-Gebrauch, kein Inventar offen, nicht tot)
+        // Check: Ist der Spieler handlungsfähig?
         if (player.isBlocking() || player.isUsingItem() || 
             MinecraftClient.getInstance().currentScreen instanceof HandledScreen || 
             player.getHealth() <= 0.0f || target.getHealth() <= 0.0f) {
@@ -42,9 +43,8 @@ public abstract class MixinMinecraftClient {
 
         double cooldown = player.getAttackCooldownProgress(0.5f);
 
-        // Die Logik aus dem "Clean"-Client:
         if (player.isOnGround()) {
-            // SPRINT-LOGIK
+            // SPRINT-LOGIK (Am Boden)
             if (!player.isSprinting()) return;
 
             // Cooldown Check (0.85 + Random)
