@@ -4,7 +4,7 @@ import me.sootysplash.box.Main;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.registry.tag.ItemTags; // WICHTIG: Ersetzt SwordItem/AxeItem Imports
+import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.util.Hand;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -21,25 +21,23 @@ public abstract class MixinMinecraftClient {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null) return;
 
-        // 1. Waffen-Check über Tags (viel stabiler als SwordItem/AxeItem direkt)
+        // Waffen-Check
         boolean hasWeapon = mc.player.getMainHandStack().isIn(ItemTags.SWORDS) || 
                             mc.player.getMainHandStack().isIn(ItemTags.AXES);
-        
         if (!hasWeapon) return;
 
-        // 2. Status-Checks
+        // Status-Checks
         if (mc.player.isBlocking() || mc.player.isUsingItem()) return;
         if (mc.currentScreen instanceof HandledScreen) return;
         if (mc.player.getHealth() <= 0.0f) return;
 
-        // 3. Target-Check
+        // Target-Check
         if (!(mc.targetedEntity instanceof LivingEntity target)) return;
         if (target.getHealth() <= 0.0f) return;
 
-        // 4. Reichweiten-Check (3.0 Blöcke Limit)
+        // Reichweiten-Check (3.0 Blöcke)
         if (mc.player.distanceTo(target) > 3.0f) return;
 
-        // 5. Cooldown (Exakt 0.5f wie im Original)
         float cooldownProgress = mc.player.getAttackCooldownProgress(0.5f);
 
         if (mc.player.isOnGround()) {
@@ -49,15 +47,18 @@ public abstract class MixinMinecraftClient {
             if (mc.interactionManager != null) {
                 mc.interactionManager.attackEntity(mc.player, target);
                 mc.player.swingHand(Hand.MAIN_HAND);
+                // DER LEBENSRETTER: Cooldown zurücksetzen!
+                mc.player.resetLastAttackedTicks(); 
             }
         } else {
-            // CRIT-Logik
             if (mc.player.getVelocity().y > -0.1) return;
             if ((double)cooldownProgress < 0.88 + Math.random() * 0.05) return;
 
             if (mc.interactionManager != null) {
                 mc.interactionManager.attackEntity(mc.player, target);
                 mc.player.swingHand(Hand.MAIN_HAND);
+                // DER LEBENSRETTER: Cooldown zurücksetzen!
+                mc.player.resetLastAttackedTicks();
             }
         }
     }
