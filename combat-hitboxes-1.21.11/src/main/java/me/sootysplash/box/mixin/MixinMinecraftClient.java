@@ -42,7 +42,7 @@ public abstract class MixinMinecraftClient {
                 boolean targetFoundAndInRange = false;
                 for (Entity entity : MinecraftClient.getInstance().world.getEntities()) {
                     if (entity.getUuid().equals(lastTargetUUID)) {
-                        if (player.distanceTo(entity) <= 50.0) { // Zurück auf dein Original 50.0
+                        if (player.distanceTo(entity) <= 50.0) {
                             targetFoundAndInRange = true;
                         }
                         break;
@@ -60,15 +60,15 @@ public abstract class MixinMinecraftClient {
                     if (targetedEntity instanceof LivingEntity livingTarget && livingTarget.getHealth() > 0.0F) {
                         double cooldownProgress = player.getAttackCooldownProgress(0.5F);
 
-                        // DEIN ORIGINALER SPRINT-CHECK (unverändert)
                         if (player.isOnGround()) {
                             if (!player.isSprinting()) return;
                             
-                            // Random Cooldown & Tick Delay eingebaut
-                            if (cooldownProgress < 0.92D + Math.random() * 0.06D) return;
+                            // Cooldown MINIMAL erhöht von 0.85 auf 0.88
+                            if (cooldownProgress < 0.88D + Math.random() * 0.1D) return;
                             
                             if (tickDelay <= 0) {
-                                tickDelay = 1 + (int)(Math.random() * 2);
+                                tickDelay = (Math.random() < 0.3) ? 1 : 0;
+                                if (tickDelay == 0) performBotAttack(livingTarget);
                             } else {
                                 tickDelay--;
                                 if (tickDelay == 0) performBotAttack(livingTarget);
@@ -77,11 +77,12 @@ public abstract class MixinMinecraftClient {
                             if (player.getVelocity().y > -0.08) return;
                             if (player.isClimbing() || player.isTouchingWater() || player.hasVehicle()) return;
                             
-                            // Random Cooldown & Tick Delay eingebaut
-                            if (cooldownProgress < 0.92D + Math.random() * 0.05D) return;
+                            // Cooldown MINIMAL erhöht von 0.85 auf 0.88
+                            if (cooldownProgress < 0.88D + Math.random() * 0.05D) return;
                             
                             if (tickDelay <= 0) {
-                                tickDelay = 1 + (int)(Math.random() * 2);
+                                tickDelay = (Math.random() < 0.3) ? 1 : 0;
+                                if (tickDelay == 0) performBotAttack(livingTarget);
                             } else {
                                 tickDelay--;
                                 if (tickDelay == 0) performBotAttack(livingTarget);
