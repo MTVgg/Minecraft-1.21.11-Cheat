@@ -10,14 +10,13 @@ import org.slf4j.LoggerFactory;
 public class Main implements ModInitializer {
     public static MinecraftClient mc = MinecraftClient.getInstance();
     public static final Logger LOGGER = LoggerFactory.getLogger("CombatHitboxes");
-    public static boolean a = true;
-    public static boolean b = true;
-    public static boolean c = true;
+    
+    public static boolean a = false; // Triggerbot (Starts OFF so you can toggle it with '<')
+    public static boolean c = true;  // Master Switch (Keep this TRUE)
 
     @Override
     public void onInitialize() {
         AutoConfig.register(Config.class, GsonConfigSerializer::new);
-        LOGGER.info("CombatHitboxes | Sootysplash was here!");
+        LOGGER.info("CombatHitboxes | Loaded successfully!");
     }
-
 }
