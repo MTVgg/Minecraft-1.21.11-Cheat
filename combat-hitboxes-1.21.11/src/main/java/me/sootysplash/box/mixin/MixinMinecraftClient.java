@@ -21,47 +21,39 @@ public abstract class MixinMinecraftClient {
 
     @Inject(method = "handleInputEvents", at = @At("RETURN"))
     private void onInput(CallbackInfo info) {
-        // 1. Mod-Check
-        if (!Main.c || !Main.a || player == null) return;
+        // 1. Grund-Checks (Mod an?)
+        if (!Main.c || !Main.a || player == null || targetedEntity == null) return;
 
-        // 2. Target-Check (Nutzt Minecrafts internes Raytracing)
-        if (!(targetedEntity instanceof LivingEntity target)) return;
+        // 2. Ziel-Validierung (Nur lebende Ziele, die noch HP haben)
+        if (!(targetedEntity instanceof LivingEntity target) || target.getHealth() <= 0.0f) return;
 
-        // 3. Waffen-Check
+        // 3. DISTANZ-CHECK (Maximal 3.0 Blöcke - Extrem wichtig gegen Flags!)
+        if (player.distanceTo(target) > 3.0f) return;
+
+        // 4. Waffen- & Status-Check
         if (!(player.getMainHandStack().isIn(ItemTags.SWORDS) || player.getMainHandStack().isIn(ItemTags.AXES))) return;
-
-        // 4. Status-Check (Kein Essen, kein Blocken, kein Inventar, beide leben noch)
-        if (player.isBlocking() || player.isUsingItem() || 
-            MinecraftClient.getInstance().currentScreen instanceof HandledScreen || 
-            player.getHealth() <= 0.0f || target.getHealth() <= 0.0f) {
-            return;
-        }
+        if (player.isBlocking() || player.isUsingItem() || MinecraftClient.getInstance().currentScreen instanceof HandledScreen) return;
 
         double cooldown = player.getAttackCooldownProgress(0.5f);
-        MinecraftClient mc = MinecraftClient.getInstance();
-
-        // 5. Die Logik vom "sicheren" Client
+        
+        // 5. Cooldown Logik mit 0.88 Basis
         if (player.isOnGround()) {
-            // SPRINT-LOGIK
+            // Am Boden: Nur beim Sprinten
             if (!player.isSprinting()) return;
-            if (cooldown < 0.85 + Math.random() * 0.1) return;
-
-            // INTERACTION MANAGER ATTACK
-            if (mc.interactionManager != null) {
-                mc.interactionManager.attackEntity(player, target);
-                player.swingHand(Hand.MAIN_HAND);
-            }
+            // Würfelt zwischen 0.88 und 0.98
+            if (cooldown < 0.88D + Math.random() * 0.1D) return;
         } else {
-            // CRIT-LOGIK (Luft)
-            // Wir nutzen -0.1 für perfektes Falling-Timing
+            // In der Luft: Nur beim Fallen (Crit)
             if (player.getVelocity().y > -0.1) return;
-            if (cooldown < 0.85 + Math.random() * 0.05) return;
+            // Würfelt zwischen 0.88 und 0.93
+            if (cooldown < 0.88D + Math.random() * 0.05D) return;
+        }
 
-            // INTERACTION MANAGER ATTACK
-            if (mc.interactionManager != null) {
-                mc.interactionManager.attackEntity(player, target);
-                player.swingHand(Hand.MAIN_HAND);
-            }
+        // 6. DER SCHLAG (InteractionManager + Swing)
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.interactionManager != null) {
+            mc.interactionManager.attackEntity(player, target);
+            player.swingHand(Hand.MAIN_HAND);
         }
     }
 }
