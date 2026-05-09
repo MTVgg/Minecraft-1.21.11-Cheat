@@ -22,25 +22,25 @@ public abstract class MixinMinecraftClient {
 
     @Inject(method = "handleInputEvents", at = @At("HEAD"))
     private void onInputStealth(CallbackInfo info) {
-        // Toggle-Check
+        // Toggle-Check aus deiner Main
         if (!Main.c || !Main.a) return;
 
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null || mc.getNetworkHandler() == null) return;
 
-        // 1. Ziel-Validierung über das Crosshair (Professioneller Ansatz)
+        // 1. ZIEL-VALIDIERUNG (Raytrace-Check für Legit-Look)
         HitResult crosshairTarget = mc.crosshairTarget;
         if (!(crosshairTarget instanceof EntityHitResult entityHit) || !(entityHit.getEntity() instanceof LivingEntity target)) {
             return;
         }
 
-        // Grundlegende Checks
+        // Grundlegende Sicherheits-Checks
         if (target.getHealth() <= 0 || target.isDead() || target.isInvisible()) return;
         
-        // Reichweiten-Check (Etwas unter 3.0 für maximale Sicherheit)
+        // Reichweite auf 2.97 Blöcke begrenzt (Sicherer als Vanilla 3.0)
         if (mc.player.distanceTo(target) > 2.97) return;
 
-        // 2. Cooldown-Berechnung
+        // 2. COOLDOWN-LOGIK (88% - 95%)
         float progress = mc.player.getAttackCooldownProgress(0.5f);
         
         if (shouldExecute(mc, progress)) {
@@ -50,10 +50,11 @@ public abstract class MixinMinecraftClient {
 
     @Unique
     private boolean shouldExecute(MinecraftClient mc, float progress) {
-        // Dynamischer Schwellenwert (Humanized Randomness)
-        double threshold = 0.88 + ThreadLocalRandom.current().nextDouble(0.0, 0.05);
+        // Bereich: 0.88 bis 0.95 (Deine Vorgabe)
+        // 0.88 Basis + bis zu 0.07 Randomness = max 0.95
+        double threshold = 0.88 + ThreadLocalRandom.current().nextDouble(0.0, 0.07);
         
-        // Crit-Boost: Wenn wir fallen, schlagen wir etwas aggressiver
+        // Crit-Anpassung: Wenn wir fallen, schlagen wir minimal früher
         if (mc.player.getVelocity().y < -0.01 && !mc.player.isOnGround()) {
             threshold -= 0.02;
         }
@@ -65,22 +66,19 @@ public abstract class MixinMinecraftClient {
     private void executeSilentAttack(MinecraftClient mc, Entity target) {
         if (mc.getNetworkHandler() == null || mc.player == null) return;
 
-        // --- SILENT PACKET EXECUTION ---
-        // Wir senden die Pakete direkt über den NetworkHandler.
-        // Das umgeht interne Variablen-Tracker im ClientPlayerEntity.
+        // --- SILENT EXECUTION (Doomsday Style) ---
         
-        // Paket 1: Der Angriffsbefehl
+        // Paket 1: Angriff an den Server senden
         mc.getNetworkHandler().sendPacket(PlayerInteractEntityC2SPacket.attack(target, mc.player.isSneaking()));
         
-        // Paket 2: Die Schlag-Animation für den Server
+        // Paket 2: Hand-Animation an den Server senden
         mc.getNetworkHandler().sendPacket(new HandSwingC2SPacket(Hand.MAIN_HAND));
 
-        // --- FEEDBACK ---
-        // Wir verzichten auf lastAttackedTicks = 0, da dies den Build-Fehler auslöste.
-        // Die Animation im eigenen Client rufen wir auf, damit es für DICH legitim aussieht.
-        mc.player.swingHand(Hand.MAIN_HAND);
+        // --- BYPASS CLEANUP ---
+        // Wir haben lastAttackedTicks entfernt, um die Fehler aus image_9d6535.png zu fixen.
+        // Wir rufen KEIN mc.player.attack() auf, um Doppel-Pakete (Insta-Ban) zu vermeiden.
         
-        // Hinweis: Der Cooldown-Balken wird visuell im Client ggf. nicht leer, 
-        // aber der Server hat den Reset durch das Paket bereits registriert.
+        // Visueller Swing nur für deinen Client:
+        mc.player.swingHand(Hand.MAIN_HAND);
     }
 }
