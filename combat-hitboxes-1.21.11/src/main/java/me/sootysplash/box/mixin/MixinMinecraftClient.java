@@ -81,9 +81,5 @@ public abstract class MixinMinecraftClient {
         // --- CLIENT SIDE (VISUALS) ---
         // Die Animation triggern
         mc.player.swingHand(Hand.MAIN_HAND);
-        
-        // Den Cooldown-Balken für dich zurücksetzen (Falls dein Mapping es erlaubt)
-        // Sollte Gradle hier wieder meckern, lösche NUR die nächste Zeile.
-        mc.player.resetLastAttackedTicks();
     }
 }
